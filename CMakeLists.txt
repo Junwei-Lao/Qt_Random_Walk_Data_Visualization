@@ -1,23 +1,24 @@
-cmake_minimum_required(VERSION 3.16)
-project(QtFirstApp LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.22)
+project(RandomWalkVisualizer LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Charts)
 
-add_executable(QtFirstApp
+add_executable(RandomWalkVisualizer
     src/main.cpp
     src/MainWindow.cpp
     src/MainWindow.h
-    src/widgets/SidebarWidget.cpp
-    src/widgets/SidebarWidget.h
-    src/widgets/PlotWidget.cpp
-    src/widgets/PlotWidget.h
+    src/widgets/ChartWidget.cpp
+    src/widgets/ChartWidget.h
 )
 
-target_link_libraries(QtFirstApp PRIVATE Qt6::Widgets Qt6::Charts)
+target_link_libraries(RandomWalkVisualizer
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Charts
+)
