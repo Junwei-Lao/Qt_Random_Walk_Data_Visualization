@@ -1,3 +1,3 @@
-/data
+/data/path*.txt
 /build
 /.vscode
