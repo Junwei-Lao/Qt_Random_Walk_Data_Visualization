@@ -1,120 +1,52 @@
-// src/MainWindow.cpp
 #include "MainWindow.h"
-#include "widgets/ChartWidget.h"
-
+#include "FileListWidget.h"
+#include "AnimationWidget.h"
+#include <QVBoxLayout>
+#include <QSlider>
 #include <QSplitter>
-#include <QTimer>
-#include <QResizeEvent>
-#include <QFileSystemModel>
-#include <QTreeView>
-#include <QDir>
-#include <QFileInfo>
-#include <QModelIndex>
-#include <QHeaderView>
+#include <QWidget>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent),
-      m_dataRoot(QStringLiteral("../data")),
-      m_fsModel(new QFileSystemModel(this)),
-      m_treeView(new QTreeView(this)),
-      m_chartWidget(new ChartWidget(this))
+    : QMainWindow(parent)
 {
-    // Set up file system model (left pane)
-    m_fsModel->setRootPath(m_dataRoot);
-    m_fsModel->setFilter(QDir::AllDirs | QDir::NoDotAndDotDot | QDir::Files);
-    m_fsModel->setNameFilters(QStringList() << "*.csv");
-    m_fsModel->setNameFilterDisables(false); // hide non-csv files
+    // ---- Central container ----
+    QWidget *central = new QWidget(this);
+    QVBoxLayout *layout = new QVBoxLayout(central);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
 
-    QModelIndex rootIndex = m_fsModel->index(m_dataRoot);
+    // ---- Splitter ----
+    QSplitter *splitter = new QSplitter(Qt::Horizontal, central);
 
-    m_treeView->setModel(m_fsModel);
-    m_treeView->setRootIndex(rootIndex);
-    // Show header so the user sees column names; you can hide it again
-    // if you prefer a cleaner list view (use setHeaderHidden(true)).
-    m_treeView->setHeaderHidden(false);
-    m_treeView->setAnimated(true);
+    fileList = new FileListWidget(splitter);
+    animation = new AnimationWidget(splitter);
 
-    connect(m_treeView, &QTreeView::clicked,
-            this, &MainWindow::onFileClicked);
+    splitter->addWidget(fileList);
+    splitter->addWidget(animation);
 
-    // Programmatically control which metadata columns are visible.
-    // Columns: 0 = Name, 1 = Size, 2 = Type, 3 = Date Modified
-    constexpr bool kShowSize = true;
-    constexpr bool kShowType = false; // set to true if Type should be visible
-    constexpr bool kShowDate = false; // set to true if Date Modified should be visible
-    m_treeView->setColumnHidden(1, !kShowSize);
-    m_treeView->setColumnHidden(2, !kShowType);
-    m_treeView->setColumnHidden(3, !kShowDate);
+    // Initial 30% / 70%
+    splitter->setSizes({200, 800});
+    splitter->setStretchFactor(0, 2);
+    splitter->setStretchFactor(1, 8);
 
-    // Adjust header resize modes and initial column widths.
-    // Make the 'Name' column stretch to fill available space so it doesn't
-    // get squeezed, and set a small initial width for the Size column.
-    // Other columns can be set to ResizeToContents so they remain compact.
-    QHeaderView *header = m_treeView->header();
-    header->setSectionResizeMode(0, QHeaderView::Stretch);          // Name
-    header->setSectionResizeMode(1, QHeaderView::Interactive);      // Size
-    header->setSectionResizeMode(2, QHeaderView::ResizeToContents); // Type
-    header->setSectionResizeMode(3, QHeaderView::ResizeToContents); // Date Modified
-    // Set a modest initial width for the Size column (pixels).
-    m_treeView->setColumnWidth(1, 80);
+    // ---- Speed slider ----
+    QSlider *speedSlider = new QSlider(Qt::Horizontal, central);
+    speedSlider->setRange(1, 50);   // milliseconds per step
+    speedSlider->setValue(25);        // default speed
 
-    // No View menu by design: metadata columns are set programmatically
-    // and the user cannot toggle them at runtime. This allows the app to
-    // present a consistent set of metadata columns by default.
+    connect(speedSlider, &QSlider::valueChanged,
+            animation, &AnimationWidget::setSpeed);
 
-    // Splitter: 30% left (tree), 70% right (chart)
-    m_splitter = new QSplitter(this);
-    m_splitter->addWidget(m_treeView);
-    m_splitter->addWidget(m_chartWidget);
-    m_splitter->setStretchFactor(0, 2);
-    m_splitter->setStretchFactor(1, 3);
+    // ---- Layout assembly ----
+    layout->addWidget(splitter, 1);   // takes most space
+    layout->addWidget(speedSlider, 0);
 
-    setCentralWidget(m_splitter);
+    setCentralWidget(central);
 
-    // Ensure the splitter initially uses a 30/70 ratio. Using a single-shot timer
-    // ensures the widget geometry is established before computing sizes.
-    QTimer::singleShot(0, this, [this]
-                       {
-        if (!m_splitter) return;
-        QList<int> sizes = m_splitter->sizes();
-        int total = 0;
-        for (int s : sizes) total += s;
-        if (total <= 0) {
-            // fall back to stretch factors if there are no sizes yet
-            sizes = QList<int>{300, 700};
-            total = 1000;
-        }
-        int left = total * 30 / 100;
-        int right = total - left;
-        m_splitter->setSizes(QList<int>{left, right}); });
-    setWindowTitle("Random Walk Visualizer");
+    // ---- File selection hookup ----
+    connect(fileList, &FileListWidget::fileSelected,
+            animation, &AnimationWidget::loadFile);
+
+
 }
 
-void MainWindow::onFileClicked(const QModelIndex &index)
-{
-    if (!index.isValid())
-        return;
-
-    QFileInfo info = m_fsModel->fileInfo(index);
-    if (!info.isFile())
-        return;
-    if (info.suffix().toLower() != QLatin1String("csv"))
-        return;
-
-    const QString path = info.absoluteFilePath();
-    m_chartWidget->showFile(path);
-}
-
-void MainWindow::resizeEvent(QResizeEvent *event)
-{
-    QMainWindow::resizeEvent(event);
-    if (!m_splitter)
-        return;
-    // Maintain 30/70 split on window resize
-    int width = m_splitter->size().width();
-    if (width <= 0)
-        return;
-    int left = width * 30 / 100;
-    int right = width - left;
-    m_splitter->setSizes(QList<int>{left, right});
-}

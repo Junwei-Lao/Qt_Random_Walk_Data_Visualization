@@ -1,24 +1,21 @@
-cmake_minimum_required(VERSION 3.22)
-project(RandomWalkVisualizer LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.16)
+project(RandomWalkViewer LANGUAGES CXX)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTORCC ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Charts)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
-add_executable(RandomWalkVisualizer
+add_executable(RandomWalkViewer
     src/main.cpp
     src/MainWindow.cpp
-    src/MainWindow.h
-    src/widgets/ChartWidget.cpp
-    src/widgets/ChartWidget.h
+    src/FileListWidget.cpp
+    src/AnimationWidget.cpp
 )
 
-target_link_libraries(RandomWalkVisualizer
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-    Qt6::Charts
-)
+target_include_directories(RandomWalkViewer PRIVATE src)
+target_link_libraries(RandomWalkViewer PRIVATE Qt6::Widgets)
